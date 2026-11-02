@@ -66,15 +66,6 @@ It subsequently transitioned to `OK`.
 
 The recorded evaluation showed CPU utilization of approximately 0.3555%, below the configured 80% threshold.
 
-## Testing Limitations
-
-- Real CPU metrics were collected and verified.
-- The alarm configuration and normal `OK` state were verified.
-- A real CPU threshold breach has not yet been tested.
-- SNS notifications have not been configured.
-- Memory metrics have not yet been integrated through the CloudWatch Agent.
-- No claim is made that high-CPU alert delivery has been tested.
-
 ## Cost Management
 
 The EC2 instance was stopped after the monitoring verification.
@@ -83,9 +74,76 @@ Stopping the instance avoids ongoing EC2 compute charges, but the attached EBS v
 
 The EBS volume is 8 GiB gp3 and is not encrypted.
 
-## Next Improvements
+## CloudWatch Agent - Memory Monitoring
 
-- Integrate CloudWatch Agent for memory metrics.
-- Configure SNS notifications for alarm state changes.
-- Test a controlled CPU threshold breach.
-- Document incident investigation and recovery.
+### Agent Installation and Configuration
+
+The Amazon CloudWatch Agent was installed on the Amazon Linux 2023 EC2 instance using DNF.
+
+Agent version: `1.300071.0`
+
+An EC2 IAM role named `CloudWatchAgentEC2Role` was associated through the `CloudWatchAgentEC2Profile` instance profile.
+
+The role has the following managed policies:
+
+- `CloudWatchAgentServerPolicy`
+- `AmazonSSMManagedInstanceCore`
+
+AWS Systems Manager Session Manager connectivity was verified, and Run Command was used to install and configure the agent without requiring an accepted SSH host key.
+
+The agent was configured to collect:
+
+- Metric: `mem_used_percent`
+- Namespace: `CWAgent`
+- Collection interval: 60 seconds
+- Dimension: `InstanceId`
+
+### Memory Metric Verification
+
+Actual memory utilization datapoints were retrieved from CloudWatch using the AWS CLI.
+
+| Timestamp (IST) | Average Memory Utilization |
+|---|---:|
+| 18:25 | 26.59% |
+| 18:26 | 25.37% |
+| 18:27 | 25.79% |
+| 18:28 | 25.79% |
+| 18:29 | 25.26% |
+
+These readings confirm that the CloudWatch Agent successfully published memory metrics.
+
+### High Memory Alarm
+
+| Setting | Value |
+|---|---|
+| Alarm Name | CloudMonitoring-High-Memory |
+| Metric | mem_used_percent |
+| Namespace | CWAgent |
+| Statistic | Average |
+| Period | 300 seconds |
+| Evaluation Periods | 1 |
+| Datapoints to Alarm | 1 |
+| Threshold | 80% |
+| Comparison | GreaterThanOrEqualToThreshold |
+| Missing Data | notBreaching |
+
+The alarm initially entered `INSUFFICIENT_DATA` while waiting for evaluation.
+
+It subsequently transitioned to `OK` after CloudWatch received a memory reading of approximately 25.48%.
+
+A real memory threshold breach has not been tested.
+
+## Security and Access Cleanup
+
+- Systems Manager connectivity was verified.
+- SSH inbound access was removed from the EC2 security group after SSM access was confirmed.
+- The security group was verified to have no inbound port 22 rules.
+- The EC2 instance was stopped after monitoring verification.
+
+## Updated Testing Limitations
+
+- Actual CPU and memory metrics were collected and verified.
+- Both CloudWatch alarms were created and verified in the `OK` state.
+- Real CPU and memory threshold breaches have not been tested.
+- SNS notifications have not been configured or tested.
+- No claim is made that alert delivery or automated remediation has been tested.
