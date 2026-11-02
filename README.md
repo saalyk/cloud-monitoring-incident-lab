@@ -19,12 +19,16 @@ A Linux-based system monitoring project built with Bash. It monitors CPU usage, 
 - **Alert logging:** Saves warnings to `logs/monitor.log`.
 - **Input validation:** Rejects non-numeric, negative, and above-100 test values.
 - **Portable log path:** Saves logs in the project directory, even when the script runs from another directory.
+- **Logging error handling:** Reports log-directory creation and log-write failures, continues monitoring, and exits with a non-zero status if logging fails.
+- **CPU display fallback:** Continues monitoring with the collected CPU percentage if the live CPU details command fails.
+- **Automatic log directory:** Creates the `logs/` directory when the script runs; runtime logs are excluded from Git.
 
 ## Project Structure
 
 - `scripts/system-monitor.sh` — Main Bash monitoring script.
-- `logs/monitor.log` — Timestamped alert log.
+- `logs/monitor.log` — Automatically generated timestamped alert log (created when the script runs).
 - `incidents/cpu-alert-incident.md` — Sample CPU alert investigation report.
+- `aws-cloudwatch-monitoring.md` — AWS CloudWatch CPU and memory monitoring documentation.
 - `README.md` — Project documentation.
 
 ## Requirements
@@ -32,7 +36,8 @@ A Linux-based system monitoring project built with Bash. It monitors CPU usage, 
 - Ubuntu or another Linux distribution.
 - Bash shell.
 - `top`, `free`, `df`, and `awk` utilities.
-- No AWS account or paid cloud services required.
+- The local Bash monitoring script does not require an AWS account.
+- The AWS CloudWatch monitoring phase requires an AWS account and configured AWS resources; charges may apply.
 
 ## How to Run
 
@@ -79,6 +84,8 @@ The monitoring script was tested with:
 - Invalid text, negative values, and values above 100%.
 - Multiple resource alerts in one run.
 - Execution from outside the project directory to verify log-path handling.
+- Simulated CPU collection and display command failures.
+- Simulated log-write permission failures, including continued metric checks and non-zero exit status.
 
 Shell syntax was checked using `bash -n`.
 
@@ -102,6 +109,5 @@ The report covers alert detection, log verification, process inspection, investi
 
 - Add configurable alert thresholds.
 - Add automated periodic monitoring with cron.
-- Improve command-failure handling and monitoring reliability.
 - Add historical metric collection and trend analysis.
 - Integrate external alerting and visualization tools.

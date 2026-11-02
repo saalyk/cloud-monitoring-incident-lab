@@ -3,7 +3,21 @@
 # Resolve project directory and log file path
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_FILE="$PROJECT_DIR/logs/monitor.log"
-mkdir -p "$PROJECT_DIR/logs"
+LOGGING_FAILED=0
+
+if ! mkdir -p "$PROJECT_DIR/logs"; then
+    echo "ERROR: Unable to create the logs directory." >&2
+    LOGGING_FAILED=1
+fi
+
+log_warning() {
+    local message="$1"
+
+    if ! printf '%s: WARNING - %s\n' "$(date)" "$message" >> "$LOG_FILE"; then
+        echo "ERROR: Unable to write warning to $LOG_FILE" >&2
+        LOGGING_FAILED=1
+    fi
+}
 
 # Cloud Monitoring & Incident Lab
 # Monitor CPU, memory, and disk usage
@@ -58,10 +72,12 @@ echo
 
 echo "CPU Usage:"
 echo "CPU usage percentage: ${CPU_USAGE}%"
-top -bn1 | grep "Cpu(s)"
+if ! top -bn1 | grep "Cpu(s)"; then
+    echo "NOTICE: Live CPU details unavailable; using the collected CPU percentage above."
+fi
 if awk "BEGIN {exit !($CPU_USAGE >= 80)}"; then
     echo "WARNING: CPU usage is at or above 80%!"
-    echo "$(date): WARNING - CPU usage is ${CPU_USAGE}%" >> "$LOG_FILE"
+    log_warning "CPU usage is ${CPU_USAGE}%"
 else
     echo "OK: CPU usage is below 80%."
 fi
@@ -72,7 +88,7 @@ free -h
 
 if awk "BEGIN {exit !($MEMORY_USAGE >= 80)}"; then
     echo "WARNING: Memory unavailable is at or above 80%!"
-    echo "$(date): WARNING - Memory unavailable is ${MEMORY_USAGE}%" >> "$LOG_FILE"
+    log_warning "Memory unavailable is ${MEMORY_USAGE}%"
 else
     echo "OK: Memory unavailable is below 80%."
 fi
@@ -83,7 +99,11 @@ df -h /
 echo "Disk usage percentage: ${DISK_USAGE}%"
 if awk "BEGIN {exit !($DISK_USAGE >= 80)}"; then
     echo "WARNING: Disk usage is at or above 80%!"
-    echo "$(date): WARNING - Disk usage is ${DISK_USAGE}%" >> "$LOG_FILE"
+    log_warning "Disk usage is ${DISK_USAGE}%"
 else
     echo "OK: Disk usage is below 80%."
+fi
+
+if [ "$LOGGING_FAILED" -ne 0 ]; then
+    exit 1
 fi
